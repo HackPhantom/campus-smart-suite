@@ -23,43 +23,43 @@ export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
         return {
           label: 'Online',
           icon: CheckCircle2,
-          className: 'bg-green-100 text-green-800 border-green-200'
+          className: 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200'
         };
       case 'offline':
         return {
           label: 'Offline',
           icon: XCircle,
-          className: 'bg-red-100 text-red-800 border-red-200'
+          className: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200'
         };
       case 'warning':
         return {
           label: 'Warning',
           icon: AlertTriangle,
-          className: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+          className: 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200'
         };
       case 'maintenance':
         return {
           label: 'Maintenance',
           icon: Wrench,
-          className: 'bg-blue-100 text-blue-800 border-blue-200'
+          className: 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200'
         };
       case 'upcoming':
         return {
           label: 'Upcoming',
           icon: Clock,
-          className: 'bg-purple-100 text-purple-800 border-purple-200'
+          className: 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200'
         };
       case 'completed':
         return {
           label: 'Completed',
           icon: CheckCircle2,
-          className: 'bg-gray-100 text-gray-800 border-gray-200'
+          className: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
         };
       default:
         return {
           label: 'Unknown',
           icon: AlertTriangle,
-          className: 'bg-gray-100 text-gray-800 border-gray-200'
+          className: 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200'
         };
     }
   };
@@ -70,6 +70,8 @@ export const StatusBadge = ({ status, className }: StatusBadgeProps) => {
   return (
     <div className={cn(
       'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border',
+      'transition-all duration-200 hover:scale-105',
+      'animate-slide-in',
       config.className,
       className
     )}>
