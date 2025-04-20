@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,7 +14,14 @@ import NotFound from "./pages/NotFound";
 import { RoomBookingProvider } from "./contexts/RoomBookingContext";
 import { AttendanceProvider } from "./contexts/AttendanceContext";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,7 +37,6 @@ const App = () => (
           <Route path="/energy" element={<Energy />} />
           <Route path="/map" element={<Map />} />
           <Route path="/alerts" element={<Alerts />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
