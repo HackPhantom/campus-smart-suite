@@ -13,7 +13,6 @@ import Map from "./pages/Map";
 import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 import { RoomBookingProvider } from "./contexts/RoomBookingContext";
-import { AttendanceProvider } from "./contexts/AttendanceContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,7 +32,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/room-booking" element={<RoomBooking />} />
+          <Route path="/room-booking" element={<RoomBookingProvider><RoomBooking /></RoomBookingProvider>} />
           <Route path="/attendance" element={<Attendance />} />
           <Route path="/energy" element={<Energy />} />
           <Route path="/map" element={<Map />} />

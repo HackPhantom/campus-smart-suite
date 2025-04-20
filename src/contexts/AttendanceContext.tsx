@@ -1,7 +1,11 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useClasses } from '@/hooks/useClasses';
+import { useStudents } from '@/hooks/useStudents';
+import { useAttendanceRecords } from '@/hooks/useAttendanceRecords';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Define types for classes and attendance
 export interface Class {
@@ -20,6 +24,7 @@ export interface AttendanceRecord {
   present: number;
   absent: number;
   rate: string;
+  records?: any[];
 }
 
 export interface Student {
@@ -40,166 +45,92 @@ interface AttendanceContextType {
   viewAttendanceHistory: (classId: string) => Promise<AttendanceRecord[]>;
   isAttendanceDialogOpen: boolean;
   setIsAttendanceDialogOpen: (isOpen: boolean) => void;
+  getAttendanceAnalysis: (className: string) => Promise<string>;
 }
 
 const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
 
 export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
-  const [classes, setClasses] = useState<Class[]>([
-    {
-      id: 'cls-101',
-      name: 'Introduction to Computer Science',
-      code: 'CSE101',
-      time: 'Mon, Wed, Fri • 10:00 AM - 11:30 AM',
-      location: 'Lecture Hall 101',
-      students: 87,
-      attendanceRate: '92%',
-    },
-    {
-      id: 'cls-203',
-      name: 'Data Structures and Algorithms',
-      code: 'CSE203',
-      time: 'Tue, Thu • 1:00 PM - 3:00 PM',
-      location: 'Computer Lab 203',
-      students: 42,
-      attendanceRate: '88%',
-    },
-    {
-      id: 'cls-305',
-      name: 'Database Management Systems',
-      code: 'CSE305',
-      time: 'Mon, Wed • 3:30 PM - 5:00 PM',
-      location: 'Room 305',
-      students: 38,
-      attendanceRate: '85%',
-    },
-    {
-      id: 'cls-401',
-      name: 'Software Engineering',
-      code: 'IT401',
-      time: 'Mon, Wed, Fri • 9:00 AM - 10:30 AM',
-      location: 'Lecture Hall 202',
-      students: 45,
-      attendanceRate: '90%',
-    },
-    {
-      id: 'cls-102',
-      name: 'Digital Electronics',
-      code: 'ECE102',
-      time: 'Tue, Thu • 10:00 AM - 11:30 AM',
-      location: 'Electronics Lab 101',
-      students: 52,
-      attendanceRate: '86%',
-    },
-  ]);
-
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([
-    {
-      date: 'May 10, 2023',
-      class: 'CSE101 - Introduction to Computer Science',
-      present: 82,
-      absent: 5,
-      rate: '94%',
-    },
-    {
-      date: 'May 8, 2023',
-      class: 'CSE101 - Introduction to Computer Science',
-      present: 80,
-      absent: 7,
-      rate: '92%',
-    },
-    {
-      date: 'May 5, 2023',
-      class: 'CSE101 - Introduction to Computer Science',
-      present: 79,
-      absent: 8,
-      rate: '91%',
-    },
-    {
-      date: 'May 3, 2023',
-      class: 'CSE101 - Introduction to Computer Science',
-      present: 85,
-      absent: 2,
-      rate: '98%',
-    },
-  ]);
-
+  const queryClient = useQueryClient();
+  const { data: classesData = [], isLoading: isLoadingClasses } = useClasses();
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const { data: studentsData = [], isLoading: isLoadingStudents } = useStudents(selectedClassId || undefined);
+  const { data: attendanceRecordsData = [], isLoading: isLoadingAttendance } = useAttendanceRecords(selectedClassId || undefined);
+  
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [isAttendanceDialogOpen, setIsAttendanceDialogOpen] = useState<boolean>(false);
 
-  // Generate dummy student data for a class
-  const generateStudents = (classId: string, count: number): Student[] => {
-    const dummyStudents: Student[] = [];
-    for (let i = 1; i <= count; i++) {
-      const rollPrefix = classId.split('-')[1];
-      dummyStudents.push({
-        id: `student-${rollPrefix}-${i}`,
-        name: `Student ${i}`,
-        rollNumber: `${rollPrefix}${i.toString().padStart(3, '0')}`,
-        present: true
-      });
-    }
-    return dummyStudents;
-  };
+  // Convert class data and add student counts
+  const classes: Class[] = classesData.map(cls => ({
+    ...cls,
+    students: studentsData.length,
+    attendanceRate: calculateAttendanceRate(attendanceRecordsData)
+  }));
 
-  const takeAttendance = (classId: string) => {
-    const selectedClass = classes.find(c => c.id === classId);
-    if (selectedClass) {
-      setSelectedClass(selectedClass);
-      const studentCount = selectedClass.students;
-      setStudents(generateStudents(classId, studentCount));
+  const takeAttendance = useCallback((classId: string) => {
+    const classObj = classes.find(c => c.id === classId);
+    if (classObj) {
+      setSelectedClass(classObj);
+      setSelectedClassId(classId);
+      setStudents(studentsData.map(student => ({
+        ...student,
+        present: true // Default all students to present
+      })));
       setIsAttendanceDialogOpen(true);
     }
-  };
+  }, [classes, studentsData]);
 
   const saveAttendance = async (studentsData: Student[], date: string): Promise<boolean> => {
     setIsLoading(true);
     
     try {
-      if (!selectedClass) return false;
+      if (!selectedClass || !selectedClassId) return false;
       
-      const presentCount = studentsData.filter(s => s.present).length;
-      const absentCount = studentsData.length - presentCount;
-      const rate = `${Math.round((presentCount / studentsData.length) * 100)}%`;
+      // Prepare attendance records for insertion
+      const records = studentsData.map(student => ({
+        class_id: selectedClassId,
+        student_id: student.id,
+        date: date,
+        status: student.present ? 'present' : 'absent'
+      }));
       
-      // Add to attendance records
-      const newRecord: AttendanceRecord = {
-        date,
-        class: `${selectedClass.code} - ${selectedClass.name}`,
-        present: presentCount,
-        absent: absentCount,
-        rate,
-      };
+      // Check if attendance for this date already exists and delete it if needed
+      const { data: existingRecords } = await supabase
+        .from('attendance_records')
+        .select('id')
+        .eq('class_id', selectedClassId)
+        .eq('date', date);
       
-      setAttendanceRecords(prev => [newRecord, ...prev]);
-      
-      // Update class attendance rate based on average
-      const classRecords = [
-        ...attendanceRecords.filter(r => r.class.includes(selectedClass.code)),
-        newRecord
-      ];
-      
-      if (classRecords.length > 0) {
-        const totalRate = classRecords.reduce((sum, record) => {
-          return sum + parseInt(record.rate.replace('%', ''));
-        }, 0);
+      if (existingRecords && existingRecords.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('attendance_records')
+          .delete()
+          .eq('class_id', selectedClassId)
+          .eq('date', date);
         
-        const newRate = `${Math.round(totalRate / classRecords.length)}%`;
-        
-        setClasses(prev => prev.map(c => 
-          c.id === selectedClass.id ? { ...c, attendanceRate: newRate } : c
-        ));
+        if (deleteError) throw deleteError;
       }
+      
+      // Insert new attendance records
+      const { error } = await supabase
+        .from('attendance_records')
+        .insert(records);
+      
+      if (error) throw error;
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       
       toast({
         title: "Attendance Saved",
-        description: `Recorded attendance for ${selectedClass.name} with ${presentCount} present and ${absentCount} absent`,
+        description: `Recorded attendance for ${selectedClass.name} with ${studentsData.filter(s => s.present).length} present and ${studentsData.filter(s => !s.present).length} absent`,
       });
       
       return true;
     } catch (error) {
+      console.error("Error saving attendance:", error);
       toast({
         title: "Error",
         description: "Failed to save attendance. Please try again.",
@@ -213,33 +144,76 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const viewAttendanceHistory = async (classId: string): Promise<AttendanceRecord[]> => {
-    const selectedClass = classes.find(c => c.id === classId);
-    if (!selectedClass) return [];
-    
-    return attendanceRecords.filter(record => 
-      record.class.includes(selectedClass.code)
-    );
+    setSelectedClassId(classId);
+    return attendanceRecordsData;
+  };
+  
+  const getAttendanceAnalysis = async (className: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/groq-attendance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'analyze_attendance',
+          data: {
+            className,
+            attendanceRecords: students,
+            students: studentsData
+          }
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get attendance analysis');
+      }
+      
+      const data = await response.json();
+      return data.analysis;
+      
+    } catch (error) {
+      console.error('Error getting attendance analysis:', error);
+      return 'Unable to generate analysis at this time.';
+    }
   };
 
   return (
     <AttendanceContext.Provider
       value={{
         classes,
-        attendanceRecords,
-        isLoading,
+        attendanceRecords: attendanceRecordsData,
+        isLoading: isLoadingClasses || isLoadingStudents || isLoadingAttendance || isLoading,
         selectedClass,
         students,
         takeAttendance,
         saveAttendance,
         viewAttendanceHistory,
         isAttendanceDialogOpen,
-        setIsAttendanceDialogOpen
+        setIsAttendanceDialogOpen,
+        getAttendanceAnalysis
       }}
     >
       {children}
     </AttendanceContext.Provider>
   );
 };
+
+function calculateAttendanceRate(records: AttendanceRecord[]): string {
+  if (!records || records.length === 0) return "0%";
+  
+  let totalPresent = 0;
+  let totalStudents = 0;
+  
+  records.forEach(record => {
+    totalPresent += record.present;
+    totalStudents += (record.present + record.absent);
+  });
+  
+  return totalStudents > 0 
+    ? `${Math.round((totalPresent / totalStudents) * 100)}%` 
+    : "0%";
+}
 
 export const useAttendance = (): AttendanceContextType => {
   const context = useContext(AttendanceContext);
