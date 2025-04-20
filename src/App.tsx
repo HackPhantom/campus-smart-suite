@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,8 @@ import Energy from "./pages/Energy";
 import Map from "./pages/Map";
 import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
+import { RoomBookingProvider } from "./contexts/RoomBookingContext";
+import { AttendanceProvider } from "./contexts/AttendanceContext";
 
 const queryClient = new QueryClient();
 
