@@ -192,7 +192,7 @@ const RoomBookingContent = () => {
                   bookings.map((booking) => (
                     <div key={booking.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{booking.room}</h3>
+                        <h3 className="font-medium">{booking.room.name}</h3>
                         <span className={`text-xs rounded-full px-2 py-1 ${
                           booking.status === 'upcoming' ? 'bg-blue-100 text-blue-800' : 
                           booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
@@ -204,7 +204,7 @@ const RoomBookingContent = () => {
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {booking.date} • {booking.time}
+                        {booking.date} • {booking.start_time} - {booking.end_time}
                       </p>
                       <p className="text-sm mt-2">
                         <span className="font-medium">Organizer:</span> {booking.organizer}

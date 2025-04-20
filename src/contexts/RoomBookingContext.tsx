@@ -14,17 +14,21 @@ export interface Room {
   capacity: number;
   features: string[];
   status: RoomStatus;
+  created_at?: string;
 }
 
 export interface Booking {
   id: string;
   room: { name: string };
+  room_id?: string;
   date: string;
   start_time: string;
   end_time: string;
   organizer: string;
   purpose: string;
   status: 'upcoming' | 'completed' | 'cancelled';
+  created_at?: string;
+  created_by?: string;
 }
 
 interface RoomBookingContextType {
@@ -61,8 +65,8 @@ interface BookingFormData {
 const RoomBookingContext = createContext<RoomBookingContextType | undefined>(undefined);
 
 export const RoomBookingProvider = ({ children }: { children: React.ReactNode }) => {
-  const { data: rooms = [], isLoading: isLoadingRooms } = useRooms();
-  const { data: bookings = [], isLoading: isLoadingBookings } = useRoomBookings();
+  const { data: roomsData = [], isLoading: isLoadingRooms } = useRooms();
+  const { data: bookingsData = [], isLoading: isLoadingBookings } = useRoomBookings();
   
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedStartTime, setSelectedStartTime] = useState<string>('');
@@ -71,6 +75,31 @@ export const RoomBookingProvider = ({ children }: { children: React.ReactNode })
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState<boolean>(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState<boolean>(false);
+
+  // Convert Supabase data to our application types
+  const rooms: Room[] = roomsData.map(room => ({
+    id: room.id,
+    name: room.name,
+    building: room.building,
+    capacity: room.capacity,
+    features: room.features,
+    status: room.status as RoomStatus,
+    created_at: room.created_at
+  }));
+
+  const bookings: Booking[] = bookingsData.map(booking => ({
+    id: booking.id,
+    room: booking.room,
+    room_id: booking.room_id,
+    date: booking.date,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+    organizer: booking.organizer,
+    purpose: booking.purpose,
+    status: booking.status as 'upcoming' | 'completed' | 'cancelled',
+    created_at: booking.created_at,
+    created_by: booking.created_by
+  }));
 
   const bookRoom = async (data: BookingFormData): Promise<boolean> => {
     try {
