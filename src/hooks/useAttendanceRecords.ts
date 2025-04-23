@@ -2,6 +2,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define a type for the attendance record data
+interface AttendanceRecord {
+  id: string;
+  date: string;
+  class_id: string;
+  status: 'present' | 'absent';
+  students: {
+    id: string;
+    name: string;
+  };
+}
+
+// Define a type for the processed records
+interface ProcessedRecord {
+  date: string;
+  class: string;
+  present: number;
+  absent: number;
+  records: AttendanceRecord[];
+  rate?: string;
+}
+
 export const useAttendanceRecords = (classId?: string) => {
   return useQuery({
     queryKey: ["attendance", classId],
@@ -38,10 +60,14 @@ export const useAttendanceRecords = (classId?: string) => {
       if (error) throw error;
       
       // Group by date to calculate metrics
-      const recordsByDate = data.reduce((acc, record) => {
+      const recordsByDate: Record<string, ProcessedRecord> = {};
+      
+      // Process each record and group by date
+      data.forEach((record: AttendanceRecord) => {
         const date = record.date;
-        if (!acc[date]) {
-          acc[date] = {
+        
+        if (!recordsByDate[date]) {
+          recordsByDate[date] = {
             date: formatDate(date),
             class: className,
             present: 0,
@@ -51,15 +77,13 @@ export const useAttendanceRecords = (classId?: string) => {
         }
         
         if (record.status === 'present') {
-          acc[date].present += 1;
+          recordsByDate[date].present += 1;
         } else {
-          acc[date].absent += 1;
+          recordsByDate[date].absent += 1;
         }
         
-        acc[date].records.push(record);
-        
-        return acc;
-      }, {});
+        recordsByDate[date].records.push(record);
+      });
       
       // Convert to array and calculate rates
       return Object.values(recordsByDate).map(record => {
