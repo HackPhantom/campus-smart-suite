@@ -1,4 +1,3 @@
-
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileCheck, QrCode, Search, Download } from 'lucide-react';
@@ -8,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { AttendanceProvider, useAttendance } from '@/contexts/AttendanceContext';
 import { AttendanceDialog } from '@/components/attendance/AttendanceDialog';
+import { RemindersDialog } from '@/components/attendance/RemindersDialog';
+import { Info } from 'lucide-react';
 
 const AttendanceContent = () => {
   const { 
@@ -23,20 +24,18 @@ const AttendanceContent = () => {
   const [toDate, setToDate] = useState<string>('');
   const [filteredRecords, setFilteredRecords] = useState(attendanceRecords);
   const [activeTab, setActiveTab] = useState<string>('classes');
+  const [showReminders, setShowReminders] = useState(false);
 
-  // Handle taking attendance for a class
   const handleTakeAttendance = (classId: string) => {
     takeAttendance(classId);
   };
 
-  // Handle viewing attendance history for a class
   const handleViewHistory = async (classId: string) => {
     const history = await viewAttendanceHistory(classId);
     setFilteredRecords(history);
     setActiveTab('reports');
   };
 
-  // Filter classes based on search query
   const filteredClasses = searchQuery
     ? classes.filter(cls => 
         cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -44,7 +43,6 @@ const AttendanceContent = () => {
       )
     : classes;
 
-  // Handle report filtering
   const handleFilterReports = () => {
     let filtered = [...attendanceRecords];
     
@@ -81,6 +79,10 @@ const AttendanceContent = () => {
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
+          <Button variant="secondary" onClick={() => setShowReminders(true)}>
+            <Info className="mr-2 h-4 w-4" />
+            Smart Notifications
+          </Button>
         </div>
 
         <TabsContent value="classes" className="space-y-6">
@@ -263,8 +265,8 @@ const AttendanceContent = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Attendance Dialog */}
       <AttendanceDialog />
+      <RemindersDialog open={showReminders} onOpenChange={setShowReminders} />
     </>
   );
 };

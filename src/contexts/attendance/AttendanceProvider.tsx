@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useCallback, ReactNode } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -46,6 +45,7 @@ interface AttendanceContextType {
   isAttendanceDialogOpen: boolean;
   setIsAttendanceDialogOpen: (isOpen: boolean) => void;
   getAttendanceAnalysis: (className: string) => Promise<string>;
+  getSmartReminders: (className: string, attendanceHistory: AttendanceRecord[]) => Promise<string>;
 }
 
 export const AttendanceContext = createContext<AttendanceContextType | undefined>(undefined);
@@ -157,6 +157,34 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const getSmartReminders = async (className: string, attendanceHistory: AttendanceRecord[]): Promise<string> => {
+    try {
+      const simplifiedHistory = attendanceHistory.map(r => ({
+        date: r.date,
+        present: r.present,
+        absent: r.absent,
+        rate: r.rate
+      }));
+      const response = await fetch(
+        "https://igphasgbniovyidznltj.functions.supabase.co/groq-reminders",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            className,
+            attendanceHistory: simplifiedHistory
+          })
+        }
+      );
+      if (!response.ok) throw new Error('Failed to get smart reminders');
+      const data = await response.json();
+      return data.reminders;
+    } catch (error) {
+      console.error('Error getting smart reminders:', error);
+      return 'Unable to generate reminders at this time.';
+    }
+  };
+
   return (
     <AttendanceContext.Provider
       value={{
@@ -170,7 +198,8 @@ export const AttendanceProvider = ({ children }: { children: ReactNode }) => {
         viewAttendanceHistory,
         isAttendanceDialogOpen,
         setIsAttendanceDialogOpen,
-        getAttendanceAnalysis
+        getAttendanceAnalysis,
+        getSmartReminders
       }}
     >
       {children}
