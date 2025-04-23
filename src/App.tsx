@@ -13,6 +13,8 @@ import Map from "./pages/Map";
 import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 import { RoomBookingProvider } from "./contexts/RoomBookingContext";
+import Users from "./pages/Users";
+import Security from "./pages/Security";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +39,8 @@ const App = () => (
           <Route path="/energy" element={<Energy />} />
           <Route path="/map" element={<Map />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/security" element={<Security />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </TooltipProvider>
