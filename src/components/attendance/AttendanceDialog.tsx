@@ -4,14 +4,15 @@ import { useAttendance } from '@/contexts/AttendanceContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Save, X, Brain } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent } from '@/components/ui/card';
+import { Save, X, Brain } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StudentTable } from './StudentTable';
+import { StudentSearch } from './StudentSearch';
+import { AnalysisSection } from './AnalysisSection';
 
 export const AttendanceDialog: React.FC = () => {
-  const { 
-    isAttendanceDialogOpen, 
+  const {
+    isAttendanceDialogOpen,
     setIsAttendanceDialogOpen,
     selectedClass,
     students,
@@ -28,12 +29,10 @@ export const AttendanceDialog: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
-    // Update local state when students change
     setLocalStudents(students);
   }, [students]);
 
   useEffect(() => {
-    // Reset the analysis when the dialog opens
     if (isAttendanceDialogOpen) {
       setAnalysis('');
       setActiveTab('attendance');
@@ -41,9 +40,9 @@ export const AttendanceDialog: React.FC = () => {
   }, [isAttendanceDialogOpen]);
 
   const handleToggleAttendance = (studentId: string) => {
-    setLocalStudents(prev => 
-      prev.map(student => 
-        student.id === studentId 
+    setLocalStudents(prev =>
+      prev.map(student =>
+        student.id === studentId
           ? { ...student, present: !student.present }
           : student
       )
@@ -62,7 +61,6 @@ export const AttendanceDialog: React.FC = () => {
 
   const handleGetAnalysis = async () => {
     if (!selectedClass) return;
-    
     setIsAnalyzing(true);
     const analysisText = await getAttendanceAnalysis(selectedClass.name);
     setAnalysis(analysisText);
@@ -71,10 +69,10 @@ export const AttendanceDialog: React.FC = () => {
   };
 
   const filteredStudents = searchQuery
-    ? localStudents.filter(student => 
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? localStudents.filter(student =>
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : localStudents;
 
   return (
@@ -83,13 +81,11 @@ export const AttendanceDialog: React.FC = () => {
         <DialogHeader>
           <DialogTitle>Take Attendance: {selectedClass?.name}</DialogTitle>
         </DialogHeader>
-        
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="analysis">Smart Analysis</TabsTrigger>
           </TabsList>
-          
           <TabsContent value="attendance" className="py-4">
             <div className="flex items-center justify-between mb-6">
               <div className="space-y-2">
@@ -103,51 +99,9 @@ export const AttendanceDialog: React.FC = () => {
                   className="w-48"
                 />
               </div>
-              <div className="relative w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search students..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+              <StudentSearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
             </div>
-            
-            <div className="rounded-md border">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="py-3 px-4 text-left font-medium">Roll Number</th>
-                    <th className="py-3 px-4 text-left font-medium">Name</th>
-                    <th className="py-3 px-4 text-center font-medium">Present</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr key={student.id} className="border-b last:border-0">
-                      <td className="py-3 px-4">{student.rollNumber}</td>
-                      <td className="py-3 px-4">{student.name}</td>
-                      <td className="py-3 px-4 text-center">
-                        <Checkbox 
-                          checked={student.present}
-                          onCheckedChange={() => handleToggleAttendance(student.id)}
-                          className="mx-auto"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredStudents.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-4 text-center text-muted-foreground">
-                        No students found
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            
+            <StudentTable students={filteredStudents} onToggle={handleToggleAttendance} />
             <div className="mt-2 flex justify-between text-sm">
               <div>Total: {filteredStudents.length} students</div>
               <div>
@@ -155,10 +109,9 @@ export const AttendanceDialog: React.FC = () => {
                 Absent: {filteredStudents.filter(s => !s.present).length}
               </div>
             </div>
-            
             <div className="mt-4 flex justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mr-2"
                 onClick={handleGetAnalysis}
                 disabled={isAnalyzing || isLoading}
@@ -168,47 +121,14 @@ export const AttendanceDialog: React.FC = () => {
               </Button>
             </div>
           </TabsContent>
-          
           <TabsContent value="analysis" className="py-4">
-            {analysis ? (
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="prose max-w-none">
-                    <h3 className="text-lg font-medium mb-2">AI Attendance Analysis</h3>
-                    <div className="whitespace-pre-line text-sm">
-                      {analysis}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-center py-10 text-muted-foreground">
-                {isAnalyzing ? (
-                  <div className="flex flex-col items-center">
-                    <div className="animate-pulse h-6 w-6 mb-2">
-                      <Brain className="h-6 w-6" />
-                    </div>
-                    <p>Analyzing attendance data...</p>
-                  </div>
-                ) : (
-                  <div>
-                    <p>Click "AI Analysis" to get intelligent insights about this attendance session.</p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-2"
-                      onClick={handleGetAnalysis}
-                      disabled={isAnalyzing}
-                    >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Generate Analysis
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
+            <AnalysisSection
+              analysis={analysis}
+              isAnalyzing={isAnalyzing}
+              onGenerate={handleGetAnalysis}
+            />
           </TabsContent>
         </Tabs>
-        
         <DialogFooter className="sm:justify-end">
           <Button
             type="button"
